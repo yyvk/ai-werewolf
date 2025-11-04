@@ -1,0 +1,21 @@
+# ModelScope API配置示例
+# 请在 .env 文件中配置你的密钥
+
+# 如何获取ModelScope API密钥：
+# 1. 访问 https://modelscope.cn/my/myaccesstoken
+# 2. 登录后创建访问令牌
+# 3. 复制令牌并在 .env 文件中设置
+
+MODELSCOPE_API_KEY=your-modelscope-access-token-here
+
+# ModelScope推荐的对话模型
+# qwen-turbo: 快速响应，适合对话
+# qwen-plus: 平衡性能和速度
+# qwen-max: 最强性能
+MODELSCOPE_MODEL=qwen-turbo
+
+# 或者使用其他ModelScope模型
+# qwen2.5-72b-instruct
+# qwen2.5-32b-instruct
+# qwen2.5-14b-instruct
+

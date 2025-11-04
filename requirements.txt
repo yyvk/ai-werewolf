@@ -1,0 +1,60 @@
+# AI狼人杀项目依赖
+
+# 基础依赖
+python-dotenv>=1.0.0
+
+# LLM API客户端（按需选择）
+openai>=1.0.0                    # OpenAI API
+dashscope>=1.14.0                # 通义千问API (阿里云)
+modelscope>=1.30.0               # ModelScope SDK
+
+# Agent框架（推荐，用于LangChain版本）
+langchain>=1.0.0
+langchain-openai>=1.0.0
+langchain-community>=0.4.0
+langgraph>=1.0.0
+langchain-core>=1.0.0
+
+# Web开发（如果需要Web界面）
+fastapi>=0.104.0
+uvicorn>=0.24.0
+websockets>=12.0
+pydantic>=2.0.0
+
+# 前端通信
+python-multipart>=0.0.6
+
+# 数据处理
+pandas>=2.0.0                    # 数据分析（可选）
+
+# 测试（可选）
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# 日志和监控（可选）
+loguru>=0.7.0
+
+# 语音合成（如果需要语音功能）
+# pyttsx3>=2.90                  # 本地TTS
+# azure-cognitiveservices-speech # Azure TTS（更好的质量）
+
+# 视频处理（如果需要生成视频内容）
+# moviepy>=1.0.3
+# opencv-python>=4.8.0
+
+# ============================================
+# 最小化安装（只运行基础Demo）
+# ============================================
+# 如果只想运行 werewolf_agent_demo.py，无需安装任何依赖
+# 它是纯Python实现的
+
+# ============================================
+# 标准安装（运行LLM版本）
+# ============================================
+# pip install python-dotenv openai
+
+# ============================================
+# 完整安装（开发完整项目）
+# ============================================
+# pip install -r requirements.txt
+
