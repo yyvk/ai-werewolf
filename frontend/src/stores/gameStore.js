@@ -60,19 +60,27 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function loadGame(gameId) {
+  async function loadGame(gameId, silent = false) {
     try {
-      loading.value = true
+      if (!silent) {
+        loading.value = true
+      }
       error.value = null
       const data = await gameAPI.getGame(gameId)
-      currentGame.value = data
+      
+      // 优化：只在数据真正变化时才更新
+      if (JSON.stringify(currentGame.value) !== JSON.stringify(data)) {
+        currentGame.value = data
+      }
       return data
     } catch (e) {
       error.value = '加载游戏失败'
       console.error(e)
       throw e
     } finally {
-      loading.value = false
+      if (!silent) {
+        loading.value = false
+      }
     }
   }
 

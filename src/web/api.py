@@ -3,12 +3,14 @@ FastAPI Web服务
 提供REST API接口
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, AsyncGenerator
 import uuid
 import asyncio
+import json
 
 # 导入游戏引擎
 from src.core.game_engine import WerewolfGame
@@ -122,10 +124,11 @@ def create_app() -> FastAPI:
             max_tokens=llm_config["max_tokens"]
         )
     
-    async def run_game_round(game_id: str):
-        """在后台运行游戏回合"""
+    async def stream_game_round(game_id: str) -> AsyncGenerator[str, None]:
+        """流式运行游戏回合"""
         try:
             if game_id not in games_cache or game_id not in game_engines:
+                yield f"data: {json.dumps({'type': 'error', 'message': '游戏不存在'})}\n\n"
                 return
             
             game_data = games_cache[game_id]
@@ -137,32 +140,43 @@ def create_app() -> FastAPI:
             game.start_round()
             game_data['round'] = game.state.round
             
+            yield f"data: {json.dumps({'type': 'round_start', 'round': game.state.round})}\n\n"
+            await asyncio.sleep(0.1)
+            
             # 讨论阶段
             game_data['phase'] = 'discussion'
-            speeches = []
+            yield f"data: {json.dumps({'type': 'phase_change', 'phase': 'discussion'})}\n\n"
+            await asyncio.sleep(0.3)
             
+            # 每个玩家发言
             for agent in agents:
                 if agent.player.is_alive:
-                    speech = agent.speak(game.state)
-                    speeches.append({
-                        'player_id': agent.player.id,
-                        'player_name': agent.player.name,
-                        'speech': speech,
-                        'role': agent.player.role_name_cn
-                    })
-                    game.record_speech(agent.player.id, speech)
+                    # 发送玩家开始发言的通知
+                    yield f"data: {json.dumps({'type': 'speech_start', 'player_id': agent.player.id, 'player_name': agent.player.name, 'role': agent.player.role_name_cn})}\n\n"
+                    await asyncio.sleep(0.5)
                     
-                    # 添加到事件
-                    event_text = f"[{agent.player.name}] {speech}"
+                    # 获取发言（流式）- speak_stream 返回异步生成器，不需要 await
+                    # 逐字发送发言内容
+                    full_speech = ""
+                    async for chunk in agent.speak_stream(game.state):
+                        full_speech += chunk
+                        yield f"data: {json.dumps({'type': 'speech_chunk', 'player_id': agent.player.id, 'chunk': chunk})}\n\n"
+                        await asyncio.sleep(0.05)  # 控制打字速度
+                    
+                    # 发言结束
+                    game.record_speech(agent.player.id, full_speech)
+                    event_text = f"[{agent.player.name}] {full_speech}"
                     game_data['events'].append(event_text)
-            
-            # 等待一小段时间（模拟讨论）
-            await asyncio.sleep(1)
+                    
+                    yield f"data: {json.dumps({'type': 'speech_end', 'player_id': agent.player.id, 'speech': full_speech})}\n\n"
+                    await asyncio.sleep(0.3)
             
             # 投票阶段
             game_data['phase'] = 'voting'
-            votes = {}
+            yield f"data: {json.dumps({'type': 'phase_change', 'phase': 'voting'})}\n\n"
+            await asyncio.sleep(0.5)
             
+            votes = {}
             for agent in agents:
                 if agent.player.is_alive:
                     vote_to = agent.vote(game.state)
@@ -171,6 +185,9 @@ def create_app() -> FastAPI:
                     
                     event_text = f"[{agent.player.name}] 投票给 玩家{vote_to}"
                     game_data['events'].append(event_text)
+                    
+                    yield f"data: {json.dumps({'type': 'vote', 'player_id': agent.player.id, 'vote_to': vote_to, 'player_name': agent.player.name})}\n\n"
+                    await asyncio.sleep(0.3)
             
             # 统计投票并淘汰
             if votes:
@@ -184,6 +201,9 @@ def create_app() -> FastAPI:
                 
                 event_text = f"玩家{eliminated_id}({eliminated_player.name}-{eliminated_player.role_name_cn}) 被投票淘汰"
                 game_data['events'].append(event_text)
+                
+                yield f"data: {json.dumps({'type': 'elimination', 'player_id': eliminated_id, 'player_name': eliminated_player.name, 'role': eliminated_player.role_name_cn})}\n\n"
+                await asyncio.sleep(0.5)
             
             # 检查游戏是否结束
             winner = game.check_game_over()
@@ -193,6 +213,8 @@ def create_app() -> FastAPI:
                 game_data['winner'] = winner
                 event_text = f"游戏结束！{winner}胜利！"
                 game_data['events'].append(event_text)
+                
+                yield f"data: {json.dumps({'type': 'game_end', 'winner': winner})}\n\n"
             
             # 更新玩家状态
             game_data['players'] = [
@@ -205,13 +227,17 @@ def create_app() -> FastAPI:
                 for p in game.state.players
             ]
             
+            # 发送完成事件（使用自定义事件类型）
+            yield f"event: complete\ndata: {json.dumps({'type': 'complete', 'game_data': game_data})}\n\n"
+            
         except Exception as e:
             print(f"Game round error: {e}")
             import traceback
             traceback.print_exc()
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
     
     @app.post("/api/games/{game_id}/start")
-    async def start_game(game_id: str, background_tasks: BackgroundTasks):
+    async def start_game(game_id: str):
         """开始游戏"""
         if game_id not in games_cache:
             raise HTTPException(status_code=404, detail="游戏不存在")
@@ -252,12 +278,10 @@ def create_app() -> FastAPI:
                 for p in game.state.players
             ]
             
-            # 在后台运行第一轮
-            background_tasks.add_task(run_game_round, game_id)
-            
+            # 不再在后台运行，让前端通过流式API来获取
             return {
                 "success": True,
-                "message": "游戏已开始，AI正在思考中..."
+                "message": "游戏已开始，准备进入第一轮..."
             }
             
         except Exception as e:
@@ -265,9 +289,9 @@ def create_app() -> FastAPI:
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"启动游戏失败: {str(e)}")
     
-    @app.post("/api/games/{game_id}/next-round")
-    async def next_round(game_id: str, background_tasks: BackgroundTasks):
-        """进行下一轮"""
+    @app.get("/api/games/{game_id}/stream-round")
+    async def stream_round(game_id: str):
+        """流式进行下一轮游戏"""
         if game_id not in games_cache:
             raise HTTPException(status_code=404, detail="游戏不存在")
         
@@ -276,12 +300,30 @@ def create_app() -> FastAPI:
         if game_data['status'] != 'running':
             raise HTTPException(status_code=400, detail="游戏未在运行中")
         
-        # 在后台运行下一轮
-        background_tasks.add_task(run_game_round, game_id)
+        return StreamingResponse(
+            stream_game_round(game_id),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    
+    @app.post("/api/games/{game_id}/next-round")
+    async def next_round(game_id: str):
+        """触发下一轮游戏（非流式，用于兼容）"""
+        if game_id not in games_cache:
+            raise HTTPException(status_code=404, detail="游戏不存在")
+        
+        game_data = games_cache[game_id]
+        
+        if game_data['status'] != 'running':
+            raise HTTPException(status_code=400, detail="游戏未在运行中")
         
         return {
             "success": True,
-            "message": "下一轮开始"
+            "message": "请使用 /api/games/{game_id}/stream-round 接口获取流式更新"
         }
     
     @app.post("/api/games/{game_id}/action")

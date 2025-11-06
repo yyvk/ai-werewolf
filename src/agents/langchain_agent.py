@@ -3,7 +3,7 @@
 """
 
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, AsyncGenerator
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -125,6 +125,31 @@ class LangChainAgent(BaseAgent):
         except Exception as e:
             print(f"  ⚠️ LLM调用失败: {e}")
             return self._fallback_speak()
+    
+    async def speak_stream(self, game_state: GameState) -> AsyncGenerator[str, None]:
+        """流式发言"""
+        try:
+            chain = self.speak_prompt | self.llm | StrOutputParser()
+            
+            # 使用 LangChain 的流式 API
+            full_response = ""
+            async for chunk in chain.astream({
+                "memory_summary": self.get_memory_summary(),
+                "game_state": self._format_game_state(game_state),
+                "recent_events": self._format_events(game_state.events)
+            }):
+                full_response += chunk
+                yield chunk
+            
+            # 记录观察
+            self.observe(f"我在第{game_state.round}轮发言了")
+            
+        except Exception as e:
+            print(f"  ⚠️ LLM流式调用失败: {e}")
+            # 降级处理：直接返回完整文本
+            fallback_text = self._fallback_speak()
+            for char in fallback_text:
+                yield char
     
     def vote(self, game_state: GameState) -> int:
         """投票"""
