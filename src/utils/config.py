@@ -31,14 +31,17 @@ class Config:
         # LLM配置
         self.llm_provider = os.getenv("LLM_PROVIDER", "modelscope")
         
-        # ModelScope配置
-        self.modelscope_token = os.getenv("MODELSCOPE_ACCESS_TOKEN", "")
-        self.modelscope_model = os.getenv("MODELSCOPE_MODEL", "Qwen/Qwen2.5-7B-Instruct")
-        self.modelscope_base_url = "https://api-inference.modelscope.cn/v1/"
+        # ModelScope 对话模型配置
+        self.modelscope_token = os.getenv("MODELSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+        self.modelscope_model = os.getenv("MODELSCOPE_MODEL") or os.getenv("OPENAI_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        self.modelscope_base_url = os.getenv("OPENAI_API_BASE", "https://api-inference.modelscope.cn/v1/")
         
-        # OpenAI配置
+        # OpenAI配置（如果使用 OpenAI）
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
+        # DashScope TTS 配置（独立配置）
+        self.dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
         
         # LLM通用参数
         self.llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.8"))
@@ -69,6 +72,13 @@ class Config:
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
         self.log_dir = str(self.project_root / "data" / "logs")
         self.log_file = "werewolf.log"
+        
+        # TTS 语音合成配置
+        self.tts_enabled = os.getenv("TTS_ENABLED", "true").lower() == "true"
+        self.tts_model = os.getenv("TTS_MODEL", "iic/speech_sambert-hifigan_tts_zh-cn_16k")
+        self.tts_voice = os.getenv("TTS_VOICE", "zhitian_emo")
+        self.tts_speed = float(os.getenv("TTS_SPEED", "1.0"))
+        self.tts_pitch = float(os.getenv("TTS_PITCH", "1.0"))
     
     def load_from_file(self, config_file: str):
         """从文件加载配置"""
@@ -81,7 +91,19 @@ class Config:
     def _update_from_dict(self, config_dict: Dict[str, Any]):
         """从字典更新配置"""
         for key, value in config_dict.items():
-            if hasattr(self, key):
+            # 处理嵌套的 TTS 配置
+            if key == 'tts' and isinstance(value, dict):
+                if 'enabled' in value:
+                    self.tts_enabled = value['enabled']
+                if 'model' in value:
+                    self.tts_model = value['model']
+                if 'voice' in value:
+                    self.tts_voice = value['voice']
+                if 'speed' in value:
+                    self.tts_speed = value['speed']
+                if 'pitch' in value:
+                    self.tts_pitch = value['pitch']
+            elif hasattr(self, key):
                 setattr(self, key, value)
     
     def save_to_file(self, config_file: str):

@@ -3,7 +3,15 @@ AI狼人杀 - Web服务器入口
 """
 
 import sys
+import os
 from pathlib import Path
+
+# 设置标准输出编码为 UTF-8（解决 Windows GBK 编码问题）
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # 添加src到路径
 sys.path.insert(0, str(Path(__file__).parent))

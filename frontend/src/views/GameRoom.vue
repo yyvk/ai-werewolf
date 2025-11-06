@@ -81,6 +81,35 @@
               🔄 刷新状态
             </button>
           </div>
+
+          <!-- 音频控制面板 -->
+          <div class="info-card audio-control-card" v-if="currentGame.status === 'running'">
+            <h3>🔊 音频控制</h3>
+            <div class="audio-status">
+              <div class="info-item" v-if="isPlayingAudio">
+                <span class="label">状态:</span>
+                <span class="value audio-playing">▶️ 播放中</span>
+              </div>
+              <div class="info-item" v-else-if="audioBufferQueue.length > 0">
+                <span class="label">状态:</span>
+                <span class="value audio-waiting">📡 接收中</span>
+              </div>
+              <div class="info-item" v-else>
+                <span class="label">状态:</span>
+                <span class="value audio-idle">🔇 空闲</span>
+              </div>
+              <div class="info-item" v-if="audioBufferQueue.length > 0">
+                <span class="label">音频块:</span>
+                <span class="value">{{ audioBufferQueue.length }} 个</span>
+              </div>
+            </div>
+            <button 
+              v-if="isPlayingAudio"
+              @click="stopAudio" 
+              class="btn btn-danger btn-block btn-small">
+              ⏹️ 停止播放
+            </button>
+          </div>
         </div>
 
         <!-- 主游戏区域 -->
@@ -256,6 +285,13 @@ const currentSpeaker = ref(null)
 const isStreaming = ref(false)
 const eventsListRef = ref(null)
 const hoveredPlayer = ref(null)
+const audioPlayer = ref(null) // 音频播放器引用
+const isPlayingAudio = ref(false) // 是否正在播放音频
+const currentAudioPlayer = ref(null) // 当前播放的玩家ID
+const audioQueue = ref([]) // 音频播放队列
+const audioContext = ref(null) // Web Audio API上下文
+const audioBufferQueue = ref([]) // 音频缓冲队列
+const currentAudioSource = ref(null) // 当前音频源
 
 function getStatusText(status) {
   const statusMap = {
@@ -355,9 +391,10 @@ async function loadGameData() {
 
 async function startGame() {
   try {
-    // 清空之前的流式事件
+    // 清空之前的流式事件和音频队列
     streamingEvents.value = []
     currentSpeaker.value = null
+    clearAudioQueue()
     
     // 手动调用后端API开始游戏（不使用store的方法，避免loading状态影响）
     const response = await fetch(`/api/games/${route.params.id}/start`, {
@@ -398,6 +435,7 @@ async function nextRound() {
     isStreaming.value = true
     streamingEvents.value = []
     currentSpeaker.value = null
+    clearAudioQueue()
     
     console.log('🔌 开始连接EventSource...', route.params.id)
     console.log('📍 URL:', `/api/games/${route.params.id}/stream-round`)
@@ -488,11 +526,33 @@ function handleStreamEvent(data) {
         role: data.role,
         text: ''
       }
+      // 初始化音频缓冲队列
+      audioBufferQueue.value = []
       break
       
     case 'speech_chunk':
       if (currentSpeaker.value && currentSpeaker.value.id === data.player_id) {
         currentSpeaker.value.text += data.chunk
+      }
+      break
+      
+    case 'audio_chunk':
+      // 接收流式音频块
+      if (data.player_id === currentSpeaker.value?.id) {
+        audioBufferQueue.value.push(data.audio_data)
+        
+        // 如果这是第一个音频块，立即开始播放
+        if (audioBufferQueue.value.length === 1 && !isPlayingAudio.value) {
+          console.log('🔊 开始流式播放音频...')
+          playStreamingAudio(data.player_id, currentSpeaker.value.name)
+        }
+      }
+      break
+      
+    case 'audio_end':
+      // 音频流结束
+      if (data.player_id === currentSpeaker.value?.id) {
+        console.log('✅ 音频流接收完成')
       }
       break
       
@@ -602,11 +662,121 @@ function getSlotClass(slotNum) {
   if (!player) return 'slot-empty'
   if (player.is_alive === false) return 'slot-dead'
   if (currentSpeaker.value && currentSpeaker.value.id === slotNum) return 'slot-speaking'
+  if (isPlayingAudio.value && currentAudioPlayer.value === slotNum) return 'slot-playing-audio'
   return 'slot-alive'
 }
 
 async function refreshGame() {
   await loadGameData()
+}
+
+// 播放流式音频
+async function playStreamingAudio(playerId, playerName) {
+  if (!audioBufferQueue.value || audioBufferQueue.value.length === 0) {
+    console.warn('⚠️ 没有音频数据可播放')
+    return
+  }
+  
+  isPlayingAudio.value = true
+  currentAudioPlayer.value = playerId
+  
+  try {
+    console.log('🔊 准备播放:', playerName, '的流式语音, 音频块数:', audioBufferQueue.value.length)
+    addStreamingEvent(`🔊 播放 ${playerName} 的语音...`, 'audio')
+    
+    // 合并所有音频块（base64解码后的二进制数据）
+    const audioChunks = audioBufferQueue.value.map(chunk => {
+      try {
+        // 将base64字符串转换为二进制
+        const binaryString = atob(chunk)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        return bytes
+      } catch (e) {
+        console.error('解码音频块失败:', e)
+        return null
+      }
+    }).filter(chunk => chunk !== null)
+    
+    if (audioChunks.length === 0) {
+      console.error('❌ 没有有效的音频数据')
+      isPlayingAudio.value = false
+      currentAudioPlayer.value = null
+      return
+    }
+    
+    // 计算总长度并合并
+    const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0)
+    const mergedAudio = new Uint8Array(totalLength)
+    let offset = 0
+    for (const chunk of audioChunks) {
+      mergedAudio.set(chunk, offset)
+      offset += chunk.length
+    }
+    
+    // 创建Blob和URL
+    const blob = new Blob([mergedAudio], { type: 'audio/wav' })
+    const audioUrl = URL.createObjectURL(blob)
+    
+    // 创建音频元素并播放
+    const audio = new Audio(audioUrl)
+    
+    audio.onplay = () => {
+      console.log('▶️ 正在播放:', playerName)
+    }
+    
+    audio.onended = () => {
+      console.log('✅ 播放完成:', playerName)
+      URL.revokeObjectURL(audioUrl) // 清理URL
+      isPlayingAudio.value = false
+      currentAudioPlayer.value = null
+      audioBufferQueue.value = []
+    }
+    
+    audio.onerror = (error) => {
+      console.error('❌ 音频播放失败:', error)
+      addStreamingEvent(`⚠️ ${playerName} 的语音播放失败`, 'error')
+      URL.revokeObjectURL(audioUrl)
+      isPlayingAudio.value = false
+      currentAudioPlayer.value = null
+      audioBufferQueue.value = []
+    }
+    
+    // 开始播放
+    await audio.play()
+    
+    // 保存引用
+    if (audioPlayer.value) {
+      audioPlayer.value.pause()
+    }
+    audioPlayer.value = audio
+    
+  } catch (error) {
+    console.error('播放流式音频时出错:', error)
+    isPlayingAudio.value = false
+    currentAudioPlayer.value = null
+    audioBufferQueue.value = []
+  }
+}
+
+// 停止当前音频播放
+function stopAudio() {
+  if (audioPlayer.value) {
+    audioPlayer.value.pause()
+    audioPlayer.value.currentTime = 0
+  }
+  isPlayingAudio.value = false
+  currentAudioPlayer.value = null
+  audioBufferQueue.value = []
+}
+
+// 清空音频队列
+function clearAudioQueue() {
+  audioQueue.value = []
+  audioBufferQueue.value = []
+  stopAudio()
 }
 
 // 自动刷新 - 已禁用，使用流式更新代替
@@ -958,6 +1128,51 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
 }
 
+.btn-danger {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+}
+
+.btn-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.audio-playing {
+  color: #4caf50;
+  font-weight: bold;
+  animation: audioPlayingPulse 1.5s ease-in-out infinite;
+}
+
+.audio-waiting {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+.audio-idle {
+  color: #9e9e9e;
+}
+
+@keyframes audioPlayingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 .game-main-panel {
   display: flex;
   flex-direction: column;
@@ -1056,6 +1271,13 @@ onUnmounted(() => {
   transform: scale(1.05);
 }
 
+.slot-playing-audio .player-card-simple {
+  border-color: #4caf50;
+  animation: playingAudio 1.5s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(76, 175, 80, 0.8);
+  transform: scale(1.05);
+}
+
 .phase-night .player-card-simple {
   background: rgba(44, 62, 80, 0.9);
 }
@@ -1070,12 +1292,31 @@ onUnmounted(() => {
   animation: iconBounce 0.6s ease-in-out infinite;
 }
 
+.slot-playing-audio .player-avatar-large {
+  animation: audioWave 1s ease-in-out infinite;
+}
+
 @keyframes iconBounce {
   0%, 100% {
     transform: translateY(0) scale(1);
   }
   50% {
     transform: translateY(-8px) scale(1.1);
+  }
+}
+
+@keyframes audioWave {
+  0%, 100% {
+    transform: scale(1) rotate(-5deg);
+  }
+  25% {
+    transform: scale(1.08) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.12) rotate(5deg);
+  }
+  75% {
+    transform: scale(1.08) rotate(0deg);
   }
 }
 
@@ -1186,6 +1427,21 @@ onUnmounted(() => {
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 30px rgba(102, 126, 234, 0.9);
+  }
+}
+
+@keyframes playingAudio {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  }
+  33% {
+    transform: scale(1.05);
+    box-shadow: 0 0 35px rgba(76, 175, 80, 0.9);
+  }
+  66% {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(76, 175, 80, 0.7);
   }
 }
 
@@ -1618,6 +1874,18 @@ onUnmounted(() => {
   background: rgba(255, 235, 238, 0.9);
   border-left-color: #f44336;
   color: #c62828;
+}
+
+.event-item.event-audio {
+  background: rgba(232, 245, 233, 0.9);
+  border-left-color: #4caf50;
+  font-style: italic;
+  color: #2e7d32;
+}
+
+.phase-night .event-item.event-audio {
+  background: rgba(76, 175, 80, 0.2);
+  color: #81c784;
 }
 
 .event-item.event-streaming {

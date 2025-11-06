@@ -6,17 +6,20 @@ FastAPI Web服务
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict, AsyncGenerator
 import uuid
 import asyncio
 import json
+from pathlib import Path
 
 # 导入游戏引擎
 from src.core.game_engine import WerewolfGame
 from src.core.event_system import EventSystem
 from src.agents import AgentFactory
 from src.utils.config import get_config
+from src.utils.tts_service_dashscope import get_dashscope_tts_service
 from langchain_openai import ChatOpenAI
 
 games_cache = {}
@@ -38,6 +41,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    # 添加静态文件服务（用于提供音频文件）
+    audio_dir = Path(__file__).parent.parent.parent / "assets" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/audio", StaticFiles(directory=str(audio_dir)), name="audio")
     
     class GameCreateRequest(BaseModel):
         """创建游戏请求"""
@@ -153,21 +161,50 @@ def create_app() -> FastAPI:
                 if agent.player.is_alive:
                     # 发送玩家开始发言的通知
                     yield f"data: {json.dumps({'type': 'speech_start', 'player_id': agent.player.id, 'player_name': agent.player.name, 'role': agent.player.role_name_cn})}\n\n"
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(0.3)
                     
-                    # 获取发言（流式）- speak_stream 返回异步生成器，不需要 await
-                    # 逐字发送发言内容
+                    # 获取发言（流式）
                     full_speech = ""
+                    
+                    # 流式输出文字
                     async for chunk in agent.speak_stream(game.state):
                         full_speech += chunk
                         yield f"data: {json.dumps({'type': 'speech_chunk', 'player_id': agent.player.id, 'chunk': chunk})}\n\n"
                         await asyncio.sleep(0.05)  # 控制打字速度
                     
-                    # 发言结束
+                    # 文字输出完成后，生成并发送音频
+                    config = get_config()
+                    if config.tts_enabled and full_speech:
+                        try:
+                            print(f"[TTS] Starting audio generation for player {agent.player.id}, text length: {len(full_speech)}")
+                            tts_service = get_dashscope_tts_service()
+                            
+                            # 生成音频并发送
+                            audio_chunks_sent = 0
+                            async for audio_chunk in tts_service.text_to_speech_stream(full_speech, agent.player.id):
+                                if audio_chunk:
+                                    audio_chunks_sent += 1
+                                    yield f"data: {json.dumps({'type': 'audio_chunk', 'player_id': agent.player.id, 'audio_data': audio_chunk})}\n\n"
+                                    print(f"[TTS] Sent audio chunk {audio_chunks_sent} for player {agent.player.id}, size: {len(audio_chunk)} bytes")
+                                    await asyncio.sleep(0)
+                                else:
+                                    print(f"[TTS] Warning: Empty audio chunk for player {agent.player.id}")
+                            
+                            yield f"data: {json.dumps({'type': 'audio_end', 'player_id': agent.player.id})}\n\n"
+                            print(f"[TTS] Audio generation completed for player {agent.player.id}, total chunks: {audio_chunks_sent}")
+                        except Exception as e:
+                            print(f"[TTS] Failed to generate audio for player {agent.player.id}: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            # 发送错误事件
+                            yield f"data: {json.dumps({'type': 'error', 'message': f'TTS generation failed: {str(e)}'})}\n\n"
+                    
+                    # 发言结束，记录事件
                     game.record_speech(agent.player.id, full_speech)
                     event_text = f"[{agent.player.name}] {full_speech}"
                     game_data['events'].append(event_text)
                     
+                    # 发送发言结束事件
                     yield f"data: {json.dumps({'type': 'speech_end', 'player_id': agent.player.id, 'speech': full_speech})}\n\n"
                     await asyncio.sleep(0.3)
             

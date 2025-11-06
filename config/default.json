@@ -35,6 +35,13 @@
     "enabled": false,
     "fps": 30,
     "resolution": [1920, 1080]
+  },
+  "tts": {
+    "enabled": true,
+    "model": "qwen3-tts-flash",
+    "voice": "Cherry",
+    "speed": 1.0,
+    "pitch": 1.0
   }
 }
 
