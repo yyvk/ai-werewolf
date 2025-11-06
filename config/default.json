@@ -9,39 +9,103 @@
       "hunter": 1
     },
     "language": "zh",
-    "debug_mode": false
+    "debug_mode": false,
+    "max_rounds": 10
   },
   "llm": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
-    "temperature": 0.7,
-    "max_tokens": 500
+    "provider": "modelscope",
+    "temperature": 0.8,
+    "max_tokens": 500,
+    "streaming": true,
+    "providers": {
+      "openai": {
+        "api_key": "",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "timeout": 60
+      },
+      "dashscope": {
+        "api_key": "",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "model": "qwen-plus",
+        "timeout": 60
+      },
+      "modelscope": {
+        "api_key": "",
+        "base_url": "https://api-inference.modelscope.cn/v1/",
+        "model": "Qwen/Qwen2.5-32B-Instruct",
+        "timeout": 60
+      },
+      "anthropic": {
+        "api_key": "",
+        "model": "claude-3-sonnet-20240229",
+        "timeout": 60
+      }
+    }
   },
   "agent": {
     "personalities": ["rational", "aggressive", "humorous"],
-    "memory_limit": 10
+    "memory_limit": 10,
+    "enable_memory": true,
+    "enable_tools": false
   },
   "database": {
     "cache_enabled": true,
     "cache_ttl": 3600,
-    "vector_db_enabled": false
+    "vector_db_enabled": false,
+    "cache_path": "data/cache",
+    "vector_db_path": "data/vector_db"
   },
   "web": {
     "host": "0.0.0.0",
     "port": 8000,
-    "cors_origins": ["*"]
+    "cors_origins": ["*"],
+    "static_files": true
   },
   "video": {
     "enabled": false,
     "fps": 30,
-    "resolution": [1920, 1080]
+    "resolution": [1920, 1080],
+    "quality": "high",
+    "output_dir": "output/videos"
   },
   "tts": {
     "enabled": true,
-    "model": "qwen3-tts-flash",
-    "voice": "Cherry",
-    "speed": 1.0,
-    "pitch": 1.0
+    "provider": "dashscope",
+    "providers": {
+      "dashscope": {
+        "api_key": "",
+        "model": "qwen3-tts-flash",
+        "voice": "Cherry",
+        "speed": 1.0,
+        "pitch": 1.0,
+        "volume": 50,
+        "sample_rate": 16000,
+        "format": "wav",
+        "_comment": "format 用于旧模型(sambert-zhichu-v1)，新模型(qwen3-tts-flash)返回格式由API决定(通常为MP3)，前端会自动检测"
+      },
+      "azure": {
+        "api_key": "",
+        "region": "eastus",
+        "voice": "zh-CN-XiaoxiaoNeural",
+        "speed": 1.0,
+        "pitch": 1.0
+      },
+      "elevenlabs": {
+        "api_key": "",
+        "model": "eleven_multilingual_v2",
+        "voice_id": "",
+        "stability": 0.5,
+        "similarity_boost": 0.75
+      }
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file": "data/logs/werewolf.log",
+    "max_bytes": 10485760,
+    "backup_count": 5
   }
 }
 

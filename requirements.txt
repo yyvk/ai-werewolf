@@ -1,63 +1,158 @@
-# AI狼人杀项目依赖
+# ============================================================
+# AI狼人杀项目依赖 - 采用LangChain规范
+# ============================================================
 
-# 基础依赖
+# ==================== 核心依赖 ====================
+
+# 环境变量管理
 python-dotenv>=1.0.0
 
-# LLM API客户端（按需选择）
-openai>=1.0.0                    # OpenAI API
-dashscope>=1.14.0                # 通义千问API (阿里云)
-modelscope>=1.30.0               # ModelScope SDK
+# ==================== LangChain 生态 ====================
 
-# Agent框架（推荐，用于LangChain版本）
-langchain>=1.0.0
-langchain-openai>=1.0.0
-langchain-community>=0.4.0
-langgraph>=1.0.0
-langchain-core>=1.0.0
+# LangChain 核心库
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.20
 
-# Web开发（如果需要Web界面）
+# LangChain LLM 集成
+langchain-openai>=0.0.5          # OpenAI, DashScope (兼容), ModelScope (兼容)
+langchain-anthropic>=0.0.1       # Anthropic Claude (可选)
+
+# LangGraph（可选，用于复杂的Agent工作流）
+# langgraph>=0.0.20
+
+# LangSmith（可选，用于调试和追踪）
+# langsmith>=0.0.70
+
+# ==================== LLM API 客户端 ====================
+
+# OpenAI API（必需，langchain-openai依赖）
+openai>=1.0.0
+
+# 通义千问 DashScope API（必需，用于TTS）
+dashscope>=1.14.0
+
+# ModelScope SDK（可选，如果使用ModelScope推理）
+modelscope>=1.30.0
+
+# Anthropic API（可选，如果使用Claude）
+# anthropic>=0.18.0
+
+# ==================== Web 开发 ====================
+
+# FastAPI Web框架
 fastapi>=0.104.0
-uvicorn>=0.24.0
-websockets>=12.0
-pydantic>=2.0.0
+uvicorn[standard]>=0.24.0        # ASGI服务器（包含标准依赖）
+websockets>=12.0                 # WebSocket支持
+pydantic>=2.0.0                  # 数据验证
+python-multipart>=0.0.6          # 文件上传支持
 
-# 前端通信
-python-multipart>=0.0.6
+# HTTP 客户端
+httpx>=0.24.0                    # 异步HTTP客户端（用于TTS等服务）
 
-# HTTP 客户端（用于 TTS 服务）
-httpx>=0.24.0
+# ==================== 数据处理 ====================
 
-# 数据处理
-pandas>=2.0.0                    # 数据分析（可选）
+# 数据分析（可选）
+pandas>=2.0.0
 
-# 测试（可选）
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
+# 向量数据库（可选）
+# chromadb>=0.4.0                # Chroma向量数据库
+# faiss-cpu>=1.7.4               # FAISS向量搜索
 
-# 日志和监控（可选）
+# ==================== 工具和实用程序 ====================
+
+# 日志管理
 loguru>=0.7.0
 
-# 语音合成（如果需要语音功能）
-# pyttsx3>=2.90                  # 本地TTS
-# azure-cognitiveservices-speech # Azure TTS（更好的质量）
+# 配置管理（已使用python-dotenv和json）
+# pyyaml>=6.0                    # 如果需要YAML配置支持
 
-# 视频处理（如果需要生成视频内容）
+# ==================== 测试 ====================
+
+# 测试框架（开发依赖）
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0                # 代码覆盖率
+
+# ==================== 语音处理（可选） ====================
+
+# 本地TTS（可选）
+# pyttsx3>=2.90
+
+# Azure TTS（可选）
+# azure-cognitiveservices-speech>=1.31.0
+
+# ==================== 视频处理（可选） ====================
+
+# 视频生成（可选）
 # moviepy>=1.0.3
 # opencv-python>=4.8.0
+# Pillow>=10.0.0                 # 图像处理
 
-# ============================================
-# 最小化安装（只运行基础Demo）
-# ============================================
-# 如果只想运行 werewolf_agent_demo.py，无需安装任何依赖
-# 它是纯Python实现的
+# ==================== 性能优化（可选） ====================
 
-# ============================================
-# 标准安装（运行LLM版本）
-# ============================================
-# pip install python-dotenv openai
+# 缓存
+# redis>=5.0.0                   # Redis缓存
+# diskcache>=5.6.0               # 磁盘缓存
 
-# ============================================
-# 完整安装（开发完整项目）
-# ============================================
+# 并发处理
+# aiofiles>=23.0.0               # 异步文件IO
+
+# ==================== 开发工具（可选） ====================
+
+# 代码格式化
+# black>=23.0.0
+# isort>=5.12.0
+# flake8>=6.0.0
+
+# 类型检查
+# mypy>=1.5.0
+
+# ============================================================
+# 安装说明
+# ============================================================
+
+# ==================== 最小安装（仅LLM功能） ====================
+# pip install python-dotenv openai langchain langchain-openai langchain-core langchain-community
+
+# ==================== 标准安装（LLM + TTS） ====================
+# pip install python-dotenv openai dashscope langchain langchain-openai langchain-core langchain-community
+
+# ==================== 完整安装（所有功能） ====================
 # pip install -r requirements.txt
 
+# ==================== Web服务安装 ====================
+# pip install python-dotenv openai dashscope langchain langchain-openai langchain-core langchain-community fastapi uvicorn[standard] websockets httpx
+
+# ============================================================
+# 版本说明
+# ============================================================
+#
+# Python版本要求: >= 3.9
+#
+# 主要依赖版本兼容性：
+# - langchain >= 0.1.0
+# - langchain-openai >= 0.0.5
+# - openai >= 1.0.0
+# - dashscope >= 1.14.0
+# - fastapi >= 0.104.0
+#
+# ============================================================
+
+# ============================================================
+# 常见问题解决
+# ============================================================
+#
+# 1. 如果遇到 langchain 版本冲突：
+#    pip install --upgrade langchain langchain-core langchain-community langchain-openai
+#
+# 2. 如果遇到 pydantic 版本冲突：
+#    pip install --upgrade "pydantic>=2.0.0"
+#
+# 3. 如果 Windows 上 uvicorn 安装失败：
+#    pip install uvicorn（不带[standard]）
+#
+# 4. 如果 dashscope 导入失败：
+#    pip install --upgrade dashscope
+#
+# ============================================================

@@ -670,7 +670,7 @@ async function refreshGame() {
   await loadGameData()
 }
 
-// 播放流式音频
+// 播放流式音频（使用 Web Audio API 实现真正的流式播放）
 async function playStreamingAudio(playerId, playerName) {
   if (!audioBufferQueue.value || audioBufferQueue.value.length === 0) {
     console.warn('⚠️ 没有音频数据可播放')
@@ -716,45 +716,134 @@ async function playStreamingAudio(playerId, playerName) {
       offset += chunk.length
     }
     
-    // 创建Blob和URL
-    const blob = new Blob([mergedAudio], { type: 'audio/wav' })
-    const audioUrl = URL.createObjectURL(blob)
+    console.log('🔍 音频数据大小:', mergedAudio.length, 'bytes')
+    console.log('🔍 音频数据前8字节:', Array.from(mergedAudio.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' '))
     
-    // 创建音频元素并播放
-    const audio = new Audio(audioUrl)
+    // 检测音频格式
+    let mimeType = 'audio/mpeg' // 默认使用 MP3
+    let audioFormat = 'MP3'
     
-    audio.onplay = () => {
+    if (mergedAudio.length >= 4) {
+      // WAV 文件以 "RIFF" 开头
+      if (mergedAudio[0] === 0x52 && mergedAudio[1] === 0x49 && mergedAudio[2] === 0x46 && mergedAudio[3] === 0x46) {
+        mimeType = 'audio/wav'
+        audioFormat = 'WAV'
+        console.log('✅ 检测到 WAV 格式')
+      }
+      // MP3 文件可能以 ID3 标签或同步字开头
+      else if ((mergedAudio[0] === 0x49 && mergedAudio[1] === 0x44 && mergedAudio[2] === 0x33) || // ID3
+               (mergedAudio[0] === 0xFF && (mergedAudio[1] & 0xE0) === 0xE0)) { // MP3 sync word
+        mimeType = 'audio/mpeg'
+        audioFormat = 'MP3'
+        console.log('✅ 检测到 MP3 格式')
+      }
+      // OGG 文件以 "OggS" 开头
+      else if (mergedAudio[0] === 0x4F && mergedAudio[1] === 0x67 && mergedAudio[2] === 0x67 && mergedAudio[3] === 0x53) {
+        mimeType = 'audio/ogg'
+        audioFormat = 'OGG'
+        console.log('✅ 检测到 OGG 格式')
+      }
+      else {
+        console.log('⚠️ 无法识别音频格式，使用默认 MP3')
+      }
+    }
+    
+    // 使用 Web Audio API 播放（兼容性更好，支持更多格式）
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      
+      // 解码音频数据
+      console.log(`🎵 使用 Web Audio API 解码 ${audioFormat} 格式...`)
+      const audioBuffer = await audioContext.decodeAudioData(mergedAudio.buffer.slice(mergedAudio.byteOffset, mergedAudio.byteOffset + mergedAudio.byteLength))
+      
+      console.log(`✅ 解码成功: 时长=${audioBuffer.duration.toFixed(2)}秒, 采样率=${audioBuffer.sampleRate}Hz, 声道=${audioBuffer.numberOfChannels}`)
+      
+      // 创建音频源
+      const source = audioContext.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(audioContext.destination)
+      
+      // 播放开始
+      source.onended = () => {
+        console.log('✅ 播放完成:', playerName)
+        audioContext.close()
+        isPlayingAudio.value = false
+        currentAudioPlayer.value = null
+        audioBufferQueue.value = []
+      }
+      
+      // 开始播放
+      source.start(0)
       console.log('▶️ 正在播放:', playerName)
+      
+      // 保存引用以便停止
+      if (audioPlayer.value) {
+        audioPlayer.value.pause && audioPlayer.value.pause()
+        audioPlayer.value.stop && audioPlayer.value.stop()
+      }
+      audioPlayer.value = { 
+        source, 
+        context: audioContext,
+        pause: () => {
+          source.stop()
+          audioContext.close()
+        },
+        stop: () => {
+          source.stop()
+          audioContext.close()
+        }
+      }
+      
+    } catch (decodeError) {
+      console.error('❌ Web Audio API 解码失败:', decodeError)
+      console.log('🔄 回退到标准 Audio 元素播放...')
+      
+      // 回退到标准 Audio 元素
+      const blob = new Blob([mergedAudio], { type: mimeType })
+      const audioUrl = URL.createObjectURL(blob)
+      const audio = new Audio(audioUrl)
+      
+      audio.onplay = () => {
+        console.log('▶️ 正在播放 (Audio元素):', playerName)
+      }
+      
+      audio.onended = () => {
+        console.log('✅ 播放完成:', playerName)
+        URL.revokeObjectURL(audioUrl)
+        isPlayingAudio.value = false
+        currentAudioPlayer.value = null
+        audioBufferQueue.value = []
+      }
+      
+      audio.onerror = (error) => {
+        console.error('❌ 音频播放失败:', error)
+        if (audio.error) {
+          const errorMessages = {
+            1: 'MEDIA_ERR_ABORTED - 用户中止',
+            2: 'MEDIA_ERR_NETWORK - 网络错误',
+            3: 'MEDIA_ERR_DECODE - 解码错误',
+            4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - 不支持的格式'
+          }
+          console.error(`   错误: ${errorMessages[audio.error.code] || '未知错误'}`)
+        }
+        addStreamingEvent(`⚠️ ${playerName} 的语音播放失败`, 'error')
+        URL.revokeObjectURL(audioUrl)
+        isPlayingAudio.value = false
+        currentAudioPlayer.value = null
+        audioBufferQueue.value = []
+      }
+      
+      await audio.play()
+      
+      if (audioPlayer.value) {
+        audioPlayer.value.pause && audioPlayer.value.pause()
+      }
+      audioPlayer.value = audio
     }
-    
-    audio.onended = () => {
-      console.log('✅ 播放完成:', playerName)
-      URL.revokeObjectURL(audioUrl) // 清理URL
-      isPlayingAudio.value = false
-      currentAudioPlayer.value = null
-      audioBufferQueue.value = []
-    }
-    
-    audio.onerror = (error) => {
-      console.error('❌ 音频播放失败:', error)
-      addStreamingEvent(`⚠️ ${playerName} 的语音播放失败`, 'error')
-      URL.revokeObjectURL(audioUrl)
-      isPlayingAudio.value = false
-      currentAudioPlayer.value = null
-      audioBufferQueue.value = []
-    }
-    
-    // 开始播放
-    await audio.play()
-    
-    // 保存引用
-    if (audioPlayer.value) {
-      audioPlayer.value.pause()
-    }
-    audioPlayer.value = audio
     
   } catch (error) {
     console.error('播放流式音频时出错:', error)
+    addStreamingEvent(`⚠️ ${playerName} 的语音播放失败`, 'error')
     isPlayingAudio.value = false
     currentAudioPlayer.value = null
     audioBufferQueue.value = []
@@ -764,8 +853,19 @@ async function playStreamingAudio(playerId, playerName) {
 // 停止当前音频播放
 function stopAudio() {
   if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.currentTime = 0
+    try {
+      // 兼容 Web Audio API 和标准 Audio 元素
+      if (audioPlayer.value.stop) {
+        audioPlayer.value.stop()
+      } else if (audioPlayer.value.pause) {
+        audioPlayer.value.pause()
+        if (audioPlayer.value.currentTime !== undefined) {
+          audioPlayer.value.currentTime = 0
+        }
+      }
+    } catch (e) {
+      console.warn('停止音频时出错:', e)
+    }
   }
   isPlayingAudio.value = false
   currentAudioPlayer.value = null

@@ -121,16 +121,9 @@ def create_app() -> FastAPI:
         return game
     
     def create_llm():
-        """创建LLM实例"""
-        config = get_config()
-        llm_config = config.get_llm_config()
-        return ChatOpenAI(
-            model=llm_config["model"],
-            api_key=llm_config["api_key"],
-            base_url=llm_config.get("base_url"),
-            temperature=llm_config["temperature"],
-            max_tokens=llm_config["max_tokens"]
-        )
+        """创建LLM实例（使用新的LLM工厂）"""
+        from src.agents.agent_factory import LLMFactory
+        return LLMFactory.create_llm()
     
     async def stream_game_round(game_id: str) -> AsyncGenerator[str, None]:
         """流式运行游戏回合"""
