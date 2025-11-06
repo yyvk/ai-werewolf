@@ -27,7 +27,7 @@ class GameRepository:
                 json.dump(game_state.to_dict(), f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"❌ Save game error: {e}")
+            print(f"[ERROR] Save game error: {e}")
             return False
     
     def load_game(self, game_id: str) -> Optional[Dict]:
@@ -39,7 +39,7 @@ class GameRepository:
                     return json.load(f)
             return None
         except Exception as e:
-            print(f"❌ Load game error: {e}")
+            print(f"[ERROR] Load game error: {e}")
             return None
     
     def list_games(self, limit: int = 100) -> List[Dict]:
@@ -69,7 +69,7 @@ class GameRepository:
                 game_file.unlink()
             return True
         except Exception as e:
-            print(f"❌ Delete game error: {e}")
+            print(f"[ERROR] Delete game error: {e}")
             return False
     
     def save_game_replay(self, game_id: str, events: List[Dict]):
@@ -86,7 +86,7 @@ class GameRepository:
                 }, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"❌ Save replay error: {e}")
+            print(f"[ERROR] Save replay error: {e}")
             return False
     
     def load_game_replay(self, game_id: str) -> Optional[List[Dict]]:
@@ -99,6 +99,6 @@ class GameRepository:
                     return data.get("events", [])
             return None
         except Exception as e:
-            print(f"❌ Load replay error: {e}")
+            print(f"[ERROR] Load replay error: {e}")
             return None
 

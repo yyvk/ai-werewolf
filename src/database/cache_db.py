@@ -26,7 +26,7 @@ class CacheDatabase(BaseDatabase):
     def connect(self):
         """连接缓存"""
         self.connected = True
-        print(f"✅ Cache DB connected: {self.cache_type}")
+        print(f"[OK] Cache DB connected: {self.cache_type}")
     
     def disconnect(self):
         """断开连接"""
@@ -40,7 +40,7 @@ class CacheDatabase(BaseDatabase):
             self.memory_cache[key] = (value, expire_time)
             return True
         except Exception as e:
-            print(f"❌ Cache save error: {e}")
+            print(f"[ERROR] Cache save error: {e}")
             return False
     
     def get(self, key: str) -> Optional[Any]:
@@ -54,7 +54,7 @@ class CacheDatabase(BaseDatabase):
                     del self.memory_cache[key]
             return None
         except Exception as e:
-            print(f"❌ Cache get error: {e}")
+            print(f"[ERROR] Cache get error: {e}")
             return None
     
     def delete(self, key: str) -> bool:
@@ -64,7 +64,7 @@ class CacheDatabase(BaseDatabase):
                 del self.memory_cache[key]
             return True
         except Exception as e:
-            print(f"❌ Cache delete error: {e}")
+            print(f"[ERROR] Cache delete error: {e}")
             return False
     
     def exists(self, key: str) -> bool:

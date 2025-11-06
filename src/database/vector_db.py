@@ -23,7 +23,7 @@ class VectorDatabase(BaseDatabase):
     def connect(self):
         """连接数据库"""
         self.connected = True
-        print(f"✅ Vector DB connected: {self.db_path}")
+        print(f"[OK] Vector DB connected: {self.db_path}")
         
     def disconnect(self):
         """断开连接"""
@@ -37,7 +37,7 @@ class VectorDatabase(BaseDatabase):
                 json.dump(value, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"❌ Save error: {e}")
+            print(f"[ERROR] Save error: {e}")
             return False
     
     def get(self, key: str) -> Optional[Any]:
@@ -49,7 +49,7 @@ class VectorDatabase(BaseDatabase):
                     return json.load(f)
             return None
         except Exception as e:
-            print(f"❌ Get error: {e}")
+            print(f"[ERROR] Get error: {e}")
             return None
     
     def delete(self, key: str) -> bool:
@@ -60,7 +60,7 @@ class VectorDatabase(BaseDatabase):
                 file_path.unlink()
             return True
         except Exception as e:
-            print(f"❌ Delete error: {e}")
+            print(f"[ERROR] Delete error: {e}")
             return False
     
     def exists(self, key: str) -> bool:
@@ -70,7 +70,7 @@ class VectorDatabase(BaseDatabase):
     
     def search_similar(self, query: str, top_k: int = 5) -> List[Dict]:
         """相似度搜索"""
-        print("⚠️  Vector similarity search not implemented yet")
+        print("[WARN] Vector similarity search not implemented yet")
         return []
     
     def add_embedding(self, key: str, text: str, metadata: Optional[Dict] = None):

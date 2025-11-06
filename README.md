@@ -12,7 +12,7 @@
 - **🎭 性格化角色** - 每个AI都有独特的性格和发言风格
 - **🎬 观赏性强** - AI之间的对话和推理本身就是精彩内容
 - **🏗️ 模块化架构** - 清晰的代码组织，易于扩展和维护
-- **🌐 多种模式** - 支持命令行和Web两种运行模式
+- **🌐 Web界面** - 现代化的Web界面，实时观看AI对局
 
 ## 🚀 快速开始
 
@@ -55,15 +55,26 @@ MODELSCOPE_ACCESS_TOKEN=your-token-here
 
 ### 运行游戏
 
-```bash
-# 命令行模式（开发中）
-python main.py --mode console
+#### 启动后端API服务
 
-# Web服务模式（开发中）
-python main.py --mode web
+```bash
+python main.py
 ```
 
-**注意**：当前项目处于架构阶段，核心功能正在开发中。
+后端服务将运行在：http://localhost:8000
+API文档：http://localhost:8000/docs
+
+#### 启动前端Web界面
+
+```bash
+cd frontend
+npm install  # 首次运行需要安装依赖
+npm run dev
+```
+
+前端将运行在：http://localhost:3000
+
+更多详细信息请查看 [frontend/QUICKSTART.md](frontend/QUICKSTART.md)
 
 ## 📁 项目结构
 
