@@ -1,22 +1,226 @@
-# AI狼人杀 - 前端项目
+# 🎮 AI Werewolf Frontend | AI狼人杀前端
 
-> 基于 Vue 3 + Vite 构建的AI狼人杀游戏前端界面
+> Modern web interface built with Vue 3 + Vite for the AI Werewolf game
 
-## 🚀 快速开始
+[English](#english) | [简体中文](#中文)
 
-### 前置要求
+---
 
-- Node.js 16+ 
-- npm 或 yarn
+## English
 
-### 安装依赖
+### 🚀 Quick Start
+
+#### Prerequisites
+- Node.js 16+
+- npm or yarn
+
+#### Installation
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 开发模式
+#### Development Mode
+
+```bash
+npm run dev
+```
+
+Visit: http://localhost:3000
+
+#### Production Build
+
+```bash
+npm run build
+```
+
+Build output in `dist/` directory
+
+### 📁 Project Structure
+
+```
+frontend/
+├── public/              # Static assets
+├── src/
+│   ├── api/            # API interface
+│   │   └── game.js     # Game API
+│   ├── assets/         # Assets
+│   │   └── main.css    # Global styles
+│   ├── components/     # Reusable components
+│   ├── router/         # Router configuration
+│   │   └── index.js    # Route definitions
+│   ├── stores/         # Pinia state management
+│   │   └── gameStore.js # Game state
+│   ├── views/          # Page components
+│   │   ├── Home.vue    # Home page
+│   │   └── GameRoom.vue # Game room
+│   ├── App.vue         # Root component
+│   └── main.js         # Entry file
+├── index.html          # HTML template
+├── package.json        # Project config
+├── vite.config.js      # Vite config
+└── README.md
+```
+
+### 🎨 Features
+
+#### Home Page
+- ✅ Real-time game statistics
+- ✅ Create new games
+- ✅ View game list
+- ✅ Delete games
+- ✅ Enter game rooms
+
+#### Game Room
+- ✅ View game details
+- ✅ Start game
+- ✅ Real-time state refresh
+- ✅ Display player list
+- ✅ View game event stream
+- ✅ Auto-refresh (every 5 seconds)
+- ✅ Dynamic day/night background
+- ✅ Circular player layout (village view)
+- ✅ Role-based player icons
+- ✅ Speaking player animations
+- ✅ Immersive game atmosphere
+
+### 🔧 Tech Stack
+
+- **Framework**: Vue 3 (Composition API)
+- **Build Tool**: Vite
+- **Router**: Vue Router 4
+- **State Management**: Pinia
+- **HTTP Client**: Axios
+- **Styling**: CSS3 (gradients, animations, Grid, Flexbox)
+
+### 🌐 API Integration
+
+Frontend communicates with backend API via Axios:
+
+```js
+import { gameAPI } from '@/api/game'
+
+// Create game
+const result = await gameAPI.createGame({
+  num_players: 6,
+  llm_provider: 'openai'
+})
+
+// Get game list
+const games = await gameAPI.getGames()
+```
+
+### 🎮 Usage Flow
+
+1. **View Statistics** - Home page shows total games and active games
+2. **Create Game** - Click "Create New Game" button
+3. **Configure Parameters**:
+   - Number of players: 4-12
+   - LLM Provider: OpenAI (ModelScope)
+   - Model name: Optional, leave empty for default
+4. **Enter Game Room** - Auto-redirect after creation
+5. **Start Game** - Click "Start Game" button
+6. **Watch Match** - Game auto-refreshes with latest state
+
+### 🎨 UI Highlights
+
+#### Dynamic Background
+- **Day**: Blue sky and green field gradient with sun ☀️
+- **Night**: Deep blue starry sky with moon 🌙
+- Smooth transitions between phases
+
+#### Circular Player Layout
+- Players arranged in a circle (village view)
+- Each player card features:
+  - **Circular Avatar**: Role icon (🐺 Werewolf, 👨 Villager, 🔮 Seer, etc.)
+  - **Number Badge**: Player number in top-right
+  - **Name Plate**: Player name and role
+  - **Animations**: 
+    - Pulse animation for alive players
+    - Scale animation and glow for speaking players
+    - Hover to enlarge and show detailed info card
+
+#### Role Icons
+- 🐺 Werewolf
+- 👨 Villager
+- 🔮 Seer
+- 🧙 Witch
+- 🏹 Hunter
+- 🛡️ Guard
+- 💀 Eliminated
+- 🤖 Unassigned
+
+### 🛠️ Development
+
+#### Start Backend Service
+```bash
+python main.py
+```
+
+Backend runs at: http://localhost:8000
+
+#### Start Frontend Dev Server
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs at: http://localhost:3000
+
+### 🐛 Troubleshooting
+
+#### Frontend can't connect to backend?
+Ensure:
+1. Backend service is running on port 8000
+2. Check terminal for errors
+3. Visit http://127.0.0.1:8000/health to test backend
+
+#### npm install fails?
+Try:
+```bash
+npm cache clean --force
+npm install
+```
+
+#### Port already in use?
+Modify port in `vite.config.js`:
+```js
+server: {
+  port: 3001,  // Change to another port
+}
+```
+
+### 📱 Browser Requirements
+
+Recommended modern browsers:
+- ✅ Chrome 90+
+- ✅ Firefox 88+
+- ✅ Edge 90+
+- ✅ Safari 14+
+
+### 📄 License
+
+MIT License
+
+---
+
+## 中文
+
+### 🚀 快速开始
+
+#### 环境要求
+- Node.js 16+
+- npm 或 yarn
+
+#### 安装依赖
+
+```bash
+cd frontend
+npm install
+```
+
+#### 开发模式
 
 ```bash
 npm run dev
@@ -24,7 +228,7 @@ npm run dev
 
 访问：http://localhost:3000
 
-### 生产构建
+#### 生产构建
 
 ```bash
 npm run build
@@ -32,7 +236,7 @@ npm run build
 
 构建产物在 `dist/` 目录
 
-## 📁 项目结构
+### 📁 项目结构
 
 ```
 frontend/
@@ -58,24 +262,29 @@ frontend/
 └── README.md
 ```
 
-## 🎮 功能特性
+### 🎨 功能特性
 
-### 首页 (Home.vue)
-- ✅ 显示游戏统计信息
+#### 首页
+- ✅ 实时游戏统计
 - ✅ 创建新游戏
 - ✅ 查看游戏列表
 - ✅ 删除游戏
 - ✅ 进入游戏房间
 
-### 游戏房间 (GameRoom.vue)
+#### 游戏房间
 - ✅ 查看游戏详情
 - ✅ 开始游戏
 - ✅ 实时刷新游戏状态
 - ✅ 显示玩家列表
 - ✅ 查看游戏事件流
 - ✅ 自动轮询更新（每5秒）
+- ✅ 动态昼夜背景切换
+- ✅ 玩家圆形布局（村庄视图）
+- ✅ 基于角色的玩家图标
+- ✅ 发言玩家动画效果
+- ✅ 沉浸式游戏氛围
 
-## 🔧 技术栈
+### 🔧 技术栈
 
 - **框架**: Vue 3 (Composition API)
 - **构建工具**: Vite
@@ -84,32 +293,10 @@ frontend/
 - **HTTP客户端**: Axios
 - **样式**: CSS3 (渐变、动画、Grid、Flexbox)
 
-## 🎨 设计特点
-
-- 🌈 现代化渐变配色
-- 💫 流畅的过渡动画
-- 📱 响应式布局
-- 🎯 简洁直观的UI
-- ⚡ 快速加载
-- 🔄 实时数据更新
-
-## 🌐 API集成
+### 🌐 API集成
 
 前端通过Axios与后端API通信：
 
-### 配置 (vite.config.js)
-```js
-server: {
-  proxy: {
-    '/api': {
-      target: 'http://127.0.0.1:8000',
-      changeOrigin: true,
-    },
-  },
-}
-```
-
-### 使用示例
 ```js
 import { gameAPI } from '@/api/game'
 
@@ -123,128 +310,98 @@ const result = await gameAPI.createGame({
 const games = await gameAPI.getGames()
 ```
 
-## 📊 状态管理
+### 🎮 使用流程
 
-使用Pinia进行状态管理：
+1. **查看统计** - 主页显示总游戏数和活跃游戏数
+2. **创建游戏** - 点击"创建新游戏"按钮
+3. **配置参数**：
+   - 玩家数量：4-12人
+   - LLM提供商：OpenAI (ModelScope)
+   - 模型名称：可选，留空使用默认
+4. **进入游戏房间** - 创建后自动跳转
+5. **开始游戏** - 点击"开始游戏"按钮
+6. **观看对局** - 游戏会自动刷新显示最新状态
 
-```js
-import { useGameStore } from '@/stores/gameStore'
+### 🎨 界面亮点
 
-const gameStore = useGameStore()
+#### 动态背景切换
+- **白天**: 蓝天绿地渐变，配合太阳☀️图标
+- **黑夜**: 深蓝色星空，配合月亮🌙图标
+- 阶段之间平滑过渡
 
-// 创建游戏
-await gameStore.createGame(config)
+#### 玩家圆形布局
+- 玩家围成圆形排列（村庄视图）
+- 每个玩家卡片包含：
+  - **圆形头像**: 角色图标（🐺狼人、👨村民、🔮预言家等）
+  - **编号徽章**: 右上角显示玩家编号
+  - **名牌**: 显示玩家名称和角色
+  - **动画效果**: 
+    - 存活玩家有脉冲动画
+    - 发言玩家有缩放动画和光晕效果
+    - 悬浮时放大并显示详细信息卡片
 
-// 获取游戏列表
-await gameStore.fetchGames()
+#### 角色图标
+- 🐺 狼人
+- 👨 村民
+- 🔮 预言家
+- 🧙 女巫
+- 🏹 猎人
+- 🛡️ 守卫
+- 💀 已淘汰
+- 🤖 未分配
 
-// 访问状态
-console.log(gameStore.games)
-console.log(gameStore.currentGame)
+### 🛠️ 开发指南
+
+#### 启动后端服务
+```bash
+python main.py
 ```
 
-## 🎯 开发指南
+后端运行在：http://localhost:8000
 
-### 添加新页面
-
-1. 在 `src/views/` 创建新组件
-2. 在 `src/router/index.js` 添加路由
-3. 在导航中添加链接
-
-### 添加新API
-
-1. 在 `src/api/game.js` 添加API方法
-2. 在需要的组件中导入使用
-
-### 添加新状态
-
-1. 在 `src/stores/gameStore.js` 添加状态和方法
-2. 在组件中通过`useGameStore()`使用
-
-## 🚀 部署
-
-### 开发环境
+#### 启动前端开发服务器
 ```bash
+cd frontend
 npm run dev
 ```
 
-### 生产环境
+前端运行在：http://localhost:3000
+
+### 🐛 故障排除
+
+#### 前端无法连接后端？
+确保：
+1. 后端服务已启动在8000端口
+2. 检查终端是否有错误
+3. 访问 http://127.0.0.1:8000/health 测试后端
+
+#### npm install 失败？
+尝试：
 ```bash
-# 构建
-npm run build
-
-# 预览
-npm run preview
+npm cache clean --force
+npm install
 ```
 
-### Docker部署（可选）
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
+#### 端口被占用？
+修改 `vite.config.js` 中的端口：
+```js
+server: {
+  port: 3001,  // 改成其他端口
+}
 ```
 
-## 🔄 开发流程
+### 📱 浏览器要求
 
-1. **启动后端服务**
-   ```bash
-   python main.py --mode web
-   ```
+推荐使用现代浏览器：
+- ✅ Chrome 90+
+- ✅ Firefox 88+
+- ✅ Edge 90+
+- ✅ Safari 14+
 
-2. **启动前端开发服务器**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-3. **访问应用**
-   - 前端: http://localhost:3000
-   - 后端API: http://localhost:8000
-   - API文档: http://localhost:8000/docs
-
-## 📝 注意事项
-
-- 确保后端服务已启动在8000端口
-- 开发时使用代理，生产环境需要配置CORS
-- 游戏房间会自动轮询更新，注意性能
-- 大量游戏时建议添加分页功能
-
-## 🐛 已知问题
-
-- [ ] 游戏详情页面暂时模拟数据
-- [ ] 实时游戏事件需要WebSocket支持
-- [ ] 需要添加错误处理边界
-- [ ] 可以添加更多动画效果
-
-## 🔮 未来计划
-
-- [ ] 添加WebSocket实时通信
-- [ ] 实现完整的游戏流程展示
-- [ ] 添加AI发言动画
-- [ ] 实现游戏回放功能
-- [ ] 添加用户登录系统
-- [ ] 支持移动端优化
-- [ ] 添加暗黑模式
-
-## 📄 许可证
+### 📄 许可证
 
 MIT License
 
 ---
 
 **Powered by Vue 3 + Vite** ⚡️
-
-
-
-
-
-
-
-
-
-
